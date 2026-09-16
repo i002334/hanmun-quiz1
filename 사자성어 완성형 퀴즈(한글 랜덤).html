@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사자성어 한글 완성형 퀴즈 (랜덤 출제)</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --primary-color: #2c3e50;
+            --accent-color: #27ae60;
+            --text-color: #333333;
+            --border-color: #e0e0e0;
+            --correct-color: #2ecc71;
+            --wrong-color: #e74c3c;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .quiz-container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 480px;
+            padding: 32px 24px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background-color: var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: var(--accent-color);
+            transition: width 0.3s ease;
+        }
+
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+            color: #777;
+            margin-bottom: 24px;
+        }
+
+        .korean-display {
+            font-size: 2.8rem;
+            font-weight: 800;
+            letter-spacing: 6px;
+            color: var(--primary-color);
+            margin: 16px 0;
+            word-break: keep-all;
+        }
+
+        .blank-box {
+            color: var(--accent-color);
+            border-bottom: 3px solid var(--accent-color);
+            padding: 0 4px;
+        }
+
+        .hint {
+            font-size: 1.05rem;
+            line-height: 1.6;
+            color: #555;
+            background-color: #f8f9fa;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-break: keep-all;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 14px 16px;
+            font-size: 1.1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            outline: none;
+            transition: border-color 0.2s;
+            text-align: center;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent-color);
+        }
+
+        button {
+            padding: 14px 20px;
+            font-size: 1rem;
+            font-weight: 700;
+            color: white;
+            background-color: var(--accent-color);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .feedback {
+            font-weight: 700;
+            font-size: 1.1rem;
+            min-height: 28px;
+            margin-top: 8px;
+        }
+
+        .feedback.correct { color: var(--correct-color); }
+        .feedback.wrong { color: var(--wrong-color); }
+
+        .result-container {
+            display: none;
+        }
+
+        .score-display {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--accent-color);
+            margin: 16px 0 24px;
+        }
+
+        .restart-btn {
+            width: 100%;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="quiz-container">
+        <!-- 퀴즈 진행 화면 -->
+        <div id="quiz-screen">
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="quiz-header">
+                <span id="question-number">문제 1/30</span>
+                <span id="score-text">점수: 0점</span>
+            </div>
+            <div class="korean-display" id="korean-display">칠 전 <span class="blank-box">?</span> <span class="blank-box">?</span></div>
+            <div class="hint" id="hint-text">뜻 힌트가 들어갈 자리입니다.</div>
+            
+            <form id="quiz-form" onsubmit="submitAnswer(event)">
+                <div class="input-group">
+                    <input type="text" id="answer-input" placeholder="빈칸 정답 입력 (예: 팔기)" autocomplete="off" autofocus>
+                    <button type="submit" id="submit-btn">제출</button>
+                </div>
+            </form>
+            <div class="feedback" id="feedback-text"></div>
+        </div>
+
+        <!-- 최종 결과 화면 -->
+        <div id="result-screen" class="result-container">
+            <h2>🎉 퀴즈 종료!</h2>
+            <p>모든 문제를 완료했습니다.</p>
+            <div class="score-display" id="final-score">0 / 30</div>
+            <p id="result-message"></p>
+            <button class="restart-btn" onclick="restartQuiz()">다시 도전하기 (새 무작위 문제)</button>
+        </div>
+    </div>
+
+    <script>
+        const rawQuizData = [
+            { frontKor: "칠 전", ansKor: "팔기", ansHanja: "八起", fullKor: "칠전팔기", fullHanja: "七顚八起", hint: "일곱 번 넘어지고 여덟 번 일어난다는 뜻으로, 여러 번 실패해도 굴하지 않고 계속 노력함." },
+            { frontKor: "백 절", ansKor: "불굴", ansHanja: "不屈", fullKor: "백절불굴", fullHanja: "百折不屈", hint: "백 번 꺾여도 굴하지 않는다는 뜻으로, 어떤 난관에도 굽히지 않음." },
+            { frontKor: "자 강", ansKor: "불식", ansHanja: "不息", fullKor: "자강불식", fullHanja: "自强不息", hint: "스스로 끊임없이 노력하여 쉬지 아니함." },
+            { frontKor: "초 지", ansKor: "일관", ansHanja: "一貫", fullKor: "초지일관", fullHanja: "初志一貫", hint: "처음에 세운 뜻을 끝까지 밀고 나감." },
+            { frontKor: "일 취", ansKor: "월장", ansHanja: "月將", fullKor: "일취월장", fullHanja: "日就月將", hint: "날마다 나아가고 달마다 발전함. 학업이나 실력이 끊임없이 크게 진보함." },
+            { frontKor: "대 기", ansKor: "만성", ansHanja: "晩成", fullKor: "대기만성", fullHanja: "大器晩成", hint: "큰 그릇은 늦게 이루어진다는 뜻으로, 큰 인물은 오랜 노력을 거쳐 늦게 완성됨." },
+            { frontKor: "고 진", ansKor: "감래", ansHanja: "甘來", fullKor: "고진감래", fullHanja: "苦盡甘來", hint: "쓴 것이 다하면 단 것이 온다는 뜻으로, 고생 끝에 즐거움이 옴." },
+            { frontKor: "우 공", ansKor: "이산", ansHanja: "移山", fullKor: "우공이산", fullHanja: "愚公移山", hint: "우공이 산을 옮긴다는 뜻으로, 어떤 어려운 일이라도 끊임없이 노력하면 결국 이루어짐." },
+            { frontKor: "역 지", ansKor: "사지", ansHanja: "思之", fullKor: "역지사지", fullHanja: "易地思之", hint: "처지를 서로 바꾸어 생각함." },
+            { frontKor: "살 신", ansKor: "성인", ansHanja: "成仁", fullKor: "살신성인", fullHanja: "殺身成仁", hint: "자신을 희생하여 인을 이룸." },
+            { frontKor: "개 과", ansKor: "천선", ansHanja: "遷善", fullKor: "개과천선", fullHanja: "改過遷善", hint: "허물을 고치고 착하게 됨." },
+            { frontKor: "결 초", ansKor: "보은", ansHanja: "報恩", fullKor: "결초보은", fullHanja: "結草報恩", hint: "풀을 묶어서 은혜를 갚는다는 뜻으로, 죽어서도 잊지 않고 은혜를 갚음." },
+            { frontKor: "수 불", ansKor: "석권", ansHanja: "釋卷", fullKor: "수불석권", fullHanja: "手不釋卷", hint: "손에서 책을 놓지 아니함. 항상 부지런히 공부함." },
+            { frontKor: "형 설", ansKor: "지공", ansHanja: "之功", fullKor: "형설지공", fullHanja: "螢雪之功", hint: "반딧불과 눈빛으로 공부한 공이라는 뜻으로, 고생을 무릅쓰고 부지런히 학문을 탐구함." },
+            { frontKor: "주 경", ansKor: "야독", ansHanja: "夜讀", fullKor: "주경야독", fullHanja: "晝耕夜讀", hint: "낮에는 밭을 갈고 밤에는 책을 읽는다는 뜻으로, 어려운 여건 속에서도 굳세게 공부함." },
+            { frontKor: "위 편", ansKor: "삼절", ansHanja: "三絶", fullKor: "위편삼절", fullHanja: "韋編三絶", hint: "책을 엮은 가죽끈이 세 번 끊어졌다는 뜻으로, 책을 매우 많이 읽음을 이르는 말." },
+            { frontKor: "유 비", ansKor: "무환", ansHanja: "無患", fullKor: "유비무환", fullHanja: "有備無患", hint: "미리 준비가 되어 있으면 뒷걱정이 없음." },
+            { frontKor: "결 자", ansKor: "해지", ansHanja: "解之", fullKor: "결자해지", fullHanja: "結者解之", hint: "일을 맺은 사람이 그것을 풀어야 한다는 뜻으로, 자기가 저지른 일은 자기가 해결해야 함." },
+            { frontKor: "인 과", ansKor: "응보", ansHanja: "應報", fullKor: "인과응보", fullHanja: "因果應報", hint: "원인과 결과는 서로 응한다는 뜻으로, 선을 행하면 선의 결과를 얻고 악을 행하면 악의 결과를 얻음." },
+            { frontKor: "자 업", ansKor: "자득", ansHanja: "自得", fullKor: "자업자득", fullHanja: "自業自得", hint: "자기가 저지른 일의 결과를 자기가 받음." },
+            { frontKor: "일 구", ansKor: "이언", ansHanja: "二言", fullKor: "일구이언", fullHanja: "一口二言", hint: "한 입으로 두 말을 함. 말할 때마다 말이 다름." },
+            { frontKor: "일 석", ansKor: "이조", ansHanja: "二鳥", fullKor: "일석이조", fullHanja: "一石二鳥", hint: "한 개의 돌을 던져 두 마리의 새를 잡는다는 뜻으로, 한 가지 일로 두 가지 이익을 얻음." },
+            { frontKor: "십 중", ansKor: "팔구", ansHanja: "八九", fullKor: "십중팔구", fullHanja: "十中八九", hint: "열에 여덟이나 아홉. 거의 틀림없이." },
+            { frontKor: "구 사", ansKor: "일생", ansHanja: "一生", fullKor: "구사일생", fullHanja: "九死一生", hint: "아홉 번 죽을 고비를 넘기고 한 번 살아난다는 뜻으로, 죽을 위기를 겨우 넘기고 살아남." },
+            { frontKor: "촌 철", ansKor: "살인", ansHanja: "殺人", fullKor: "촌철살인", fullHanja: "寸鐵殺人", hint: "날카로운 쇠붙이 조각으로 사람을 죽인다는 뜻으로, 간단한 말 한마디로 사람을 감동시키거나 약점을 찌름." },
+            { frontKor: "유 구", ansKor: "무언", ansHanja: "無言", fullKor: "유구무언", fullHanja: "有口無言", hint: "입은 있으나 말이 없다는 뜻으로, 변명할 말이 없음." },
+            { frontKor: "언 행", ansKor: "일치", ansHanja: "一致", fullKor: "언행일치", fullHanja: "言行一致", hint: "말과 행동이 서로 같음." },
+            { frontKor: "작 심", ansKor: "삼일", ansHanja: "三日", fullKor: "작심삼일", fullHanja: "作心三日", hint: "단단히 마음 먹은 것이 사흘을 가지 못함." },
+            { frontKor: "동 문", ansKor: "서답", ansHanja: "西答", fullKor: "동문서답", fullHanja: "東問西答", hint: "동쪽을 묻는데 서쪽을 대답한다는 뜻으로, 묻는 말에 대하여 전혀 딴판의 대답을 함." },
+            { frontKor: "유 언", ansKor: "비어", ansHanja: "蜚語", fullKor: "유언비어", fullHanja: "流言蜚語", hint: "근거 없이 터무니없이 돌아다니는 소문." }
+        ];
+
+        let quizData = [];
+        let currentQuestion = 0;
+        let score = 0;
+        let isWaitingNext = false;
+
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        const questionNumberEl = document.getElementById("question-number");
+        const scoreTextEl = document.getElementById("score-text");
+        const koreanDisplayEl = document.getElementById("korean-display");
+        const hintTextEl = document.getElementById("hint-text");
+        const answerInput = document.getElementById("answer-input");
+        const feedbackText = document.getElementById("feedback-text");
+        const progressBar = document.getElementById("progress-bar");
+        const submitBtn = document.getElementById("submit-btn");
+
+        function initQuiz() {
+            quizData = shuffleArray(rawQuizData);
+            currentQuestion = 0;
+            score = 0;
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            isWaitingNext = false;
+            const currentData = quizData[currentQuestion];
+            
+            questionNumberEl.textContent = `문제 ${currentQuestion + 1}/${quizData.length}`;
+            scoreTextEl.textContent = `점수: ${score}점`;
+            
+            koreanDisplayEl.innerHTML = `${currentData.frontKor} <span class="blank-box">?</span> <span class="blank-box">?</span>`;
+            hintTextEl.textContent = currentData.hint;
+            
+            answerInput.value = "";
+            answerInput.disabled = false;
+            answerInput.focus();
+            
+            feedbackText.textContent = "";
+            feedbackText.className = "feedback";
+            submitBtn.textContent = "제출";
+
+            const progressPercent = (currentQuestion / quizData.length) * 100;
+            progressBar.style.width = `${progressPercent}%`;
+        }
+
+        function submitAnswer(e) {
+            e.preventDefault();
+
+            if (isWaitingNext) {
+                currentQuestion++;
+                if (currentQuestion < quizData.length) {
+                    loadQuestion();
+                } else {
+                    showResult();
+                }
+                return;
+            }
+
+            const userAnswer = answerInput.value.trim().replace(/\s+/g, "");
+            const currentData = quizData[currentQuestion];
+
+            if (!userAnswer) return;
+
+            const validAnswers = [
+                currentData.ansKor,
+                currentData.ansHanja,
+                currentData.fullKor,
+                currentData.fullHanja
+            ];
+
+            if (validAnswers.includes(userAnswer)) {
+                score++;
+                feedbackText.textContent = `⭕ 정답입니다! (${currentData.fullKor} / ${currentData.fullHanja})`;
+                feedbackText.className = "feedback correct";
+                koreanDisplayEl.innerHTML = `${currentData.frontKor} <span class="blank-box">${currentData.ansKor[0]}</span> <span class="blank-box">${currentData.ansKor[1]}</span>`;
+            } else {
+                feedbackText.textContent = `❌ 오답입니다. 정답: ${currentData.ansKor} (${currentData.fullHanja})`;
+                feedbackText.className = "feedback wrong";
+            }
+
+            scoreTextEl.textContent = `점수: ${score}점`;
+            answerInput.disabled = true;
+            isWaitingNext = true;
+            submitBtn.textContent = "다음 문제";
+        }
+
+        function showResult() {
+            document.getElementById("quiz-screen").style.display = "none";
+            document.getElementById("result-screen").style.display = "block";
+            
+            const finalScoreEl = document.getElementById("final-score");
+            const resultMessageEl = document.getElementById("result-message");
+            
+            finalScoreEl.textContent = `${score} / ${quizData.length}`;
+            
+            if (score === quizData.length) {
+                resultMessageEl.textContent = "🏆 완벽합니다! 사자성어 완성이 완벽하시네요!";
+            } else if (score >= 20) {
+                resultMessageEl.textContent = "👏 훌륭한 실력입니다! 대부분 완벽히 맞히셨어요.";
+            } else {
+                resultMessageEl.textContent = "💡 차근차근 다시 복습해 보면 더 좋은 성적을 얻을 수 있어요!";
+            }
+        }
+
+        function restartQuiz() {
+            document.getElementById("quiz-screen").style.display = "block";
+            document.getElementById("result-screen").style.display = "none";
+            initQuiz();
+        }
+
+        initQuiz();
+    </script>
+</body>
+</html>
